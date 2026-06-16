@@ -42,7 +42,7 @@ def run_announce(configdir):
     time.sleep(4)
 
 
-def run_recv(configdir, timeout):
+def run_recv(configdir, timeout, announce_interval):
     RNS.Reticulum(configdir)
     identity = load_identity(configdir)
     destination = RNS.Destination(
@@ -82,7 +82,7 @@ def run_recv(configdir, timeout):
         now = time.time()
         if not state["linked"] and now >= next_announce:
             destination.announce()
-            next_announce = now + 60.0
+            next_announce = now + announce_interval
         time.sleep(0.2)
     if not state["done"]:
         emit("RECV TIMEOUT")
@@ -160,6 +160,7 @@ def main():
     p_recv = sub.add_parser("recv")
     p_recv.add_argument("--config", required=True)
     p_recv.add_argument("--timeout", type=float, default=60.0)
+    p_recv.add_argument("--announce-interval", type=float, default=120.0)
 
     p_send = sub.add_parser("send")
     p_send.add_argument("--config", required=True)
@@ -171,7 +172,7 @@ def main():
     if args.mode == "announce":
         run_announce(args.config)
     elif args.mode == "recv":
-        run_recv(args.config, args.timeout)
+        run_recv(args.config, args.timeout, args.announce_interval)
     elif args.mode == "send":
         run_send(args.config, args.dest, args.size, args.timeout)
 

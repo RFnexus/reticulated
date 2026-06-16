@@ -38,7 +38,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--node", default="")
-    parser.add_argument("--announce-interval", type=float, default=30.0)
+    parser.add_argument("--announce-interval", type=float, default=300.0)
     args = parser.parse_args()
 
     interval = {"v": args.announce_interval}

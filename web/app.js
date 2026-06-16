@@ -243,7 +243,7 @@ function showHostPanel(id, title, body) {
   let opts = "";
   for (const m of MODES) opts += '<option value="' + m + '"' + (m === mode ? " selected" : "") + ">" + m + "</option>";
   html += '<div class="row"><label>Mode</label><select id="f-mode">' + opts + "</select></div>";
-  const defInterval = state.settings.announce_interval !== undefined ? state.settings.announce_interval : 30;
+  const defInterval = state.settings.announce_interval !== undefined ? state.settings.announce_interval : 300;
   const effInterval = (node.announce_interval !== undefined && node.announce_interval !== null) ? node.announce_interval : defInterval;
   html += '<div class="row"><label>Announce interval (s)</label><input id="f-announce" type="number" min="0" step="1" value="' + effInterval + '"></div>';
   const defCap = state.settings.announce_cap !== undefined ? state.settings.announce_cap : 2;
