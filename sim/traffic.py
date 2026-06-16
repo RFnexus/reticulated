@@ -55,7 +55,7 @@ def run_recv(configdir, timeout):
     destination.set_proof_strategy(RNS.Destination.PROVE_ALL)
     destination.accepts_links(True)
 
-    state = {"done": False}
+    state = {"done": False, "linked": False}
 
     def resource_concluded(resource):
         if resource.status == RNS.Resource.COMPLETE:
@@ -68,6 +68,7 @@ def run_recv(configdir, timeout):
         emit("RECV STARTED")
 
     def link_established(link):
+        state["linked"] = True
         link.set_resource_strategy(RNS.Link.ACCEPT_ALL)
         link.set_resource_started_callback(resource_started)
         link.set_resource_concluded_callback(resource_concluded)
@@ -79,7 +80,7 @@ def run_recv(configdir, timeout):
     next_announce = 0.0
     while not state["done"] and time.time() < deadline:
         now = time.time()
-        if now >= next_announce:
+        if not state["linked"] and now >= next_announce:
             destination.announce()
             next_announce = now + 5.0
         time.sleep(0.2)

@@ -50,6 +50,7 @@ const state = {
   nodeStatus: {},
   active: false,
   showAddresses: false,
+  showNodeLogs: false,
   trafficPick: [],
 };
 
@@ -537,6 +538,7 @@ function handleEvent(event) {
     if (l) { Object.assign(l, event.params); const n = cy.getElementById(event.link); if (n) { n.data("label", mediumLabel(l)); n.data("color", lossColor(l.loss)); } }
     return;
   }
+  if (event.type === "log" && !state.showNodeLogs) return;
   logEvent(event);
 }
 
@@ -728,6 +730,7 @@ document.getElementById("file-load").addEventListener("change", (e) => {
 });
 
 document.getElementById("btn-clear-log").onclick = () => { document.getElementById("log").innerHTML = ""; };
+document.getElementById("show-node-logs").addEventListener("change", (e) => { state.showNodeLogs = e.target.checked; });
 
 document.getElementById("show-addr").addEventListener("change", (e) => {
   state.showAddresses = e.target.checked;
