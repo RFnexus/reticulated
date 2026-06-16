@@ -186,12 +186,18 @@ class Simulator:
         node = self.topology.nodes.get(node_id, {})
         value = node.get("announce_interval")
         if value is None:
-            return self.topology.settings.get("announce_interval", 30.0)
+            return self.topology.settings.get("announce_interval", 300.0)
         return value
 
     def set_node_announce_interval(self, node_id, interval):
         if node_id not in self.topology.nodes:
             return False
+        try:
+            interval = max(0.0, float(interval))
+        except Exception:
+            return False
+        if 0 < interval < 60:
+            interval = 60.0
         with self.lock:
             self.topology.set_node_field(node_id, "announce_interval", interval)
             self.node_manager.send_to_messenger(node_id, "interval " + str(self.effective_interval(node_id)))
@@ -353,6 +359,8 @@ class Simulator:
             interval = max(0.0, float(interval))
         except Exception:
             return False
+        if 0 < interval < 60:
+            interval = 60.0
         with self.lock:
             self.topology.settings["announce_interval"] = interval
             for node_id in self.topology.nodes:

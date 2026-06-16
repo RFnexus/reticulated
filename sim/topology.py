@@ -10,7 +10,7 @@ class Topology:
         self.links = {}
         self.node_seq = 0
         self.link_seq = 0
-        self.settings = {"announce_interval": 30.0, "announce_cap": 2.0, "loglevel": 4}
+        self.settings = {"announce_interval": 300.0, "announce_cap": 2.0, "loglevel": 4}
 
     def add_node(self, label=None, x=0.0, y=0.0):
         node_id = "n" + str(self.node_seq)
@@ -138,7 +138,7 @@ class Topology:
         self.link_seq = data.get("link_seq", len(self.links))
         loaded = data.get("settings", {})
         self.settings = {
-            "announce_interval": loaded.get("announce_interval", 30.0),
+            "announce_interval": loaded.get("announce_interval", 300.0),
             "announce_cap": loaded.get("announce_cap", 2.0),
             "loglevel": loaded.get("loglevel", 4),
         }

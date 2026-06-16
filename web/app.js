@@ -284,9 +284,12 @@ function showHostPanel(id, title, body) {
   document.getElementById("f-transport").addEventListener("change", (e) => api.patch("/api/nodes/" + id, { transport: e.target.checked }));
   document.getElementById("f-mode").addEventListener("change", (e) => api.patch("/api/nodes/" + id, { mode: e.target.value }));
   document.getElementById("f-announce").addEventListener("change", (e) => {
-    const v = parseFloat(e.target.value);
-    api.patch("/api/nodes/" + id, { announce_interval: isNaN(v) ? 0 : Math.max(0, v) });
-    if (state.topology.nodes[id]) state.topology.nodes[id].announce_interval = isNaN(v) ? 0 : Math.max(0, v);
+    let v = parseFloat(e.target.value);
+    v = isNaN(v) ? 0 : Math.max(0, v);
+    if (v > 0 && v < 60) v = 60;
+    e.target.value = v;
+    api.patch("/api/nodes/" + id, { announce_interval: v });
+    if (state.topology.nodes[id]) state.topology.nodes[id].announce_interval = v;
   });
   document.getElementById("f-cap").addEventListener("change", (e) => {
     const v = parseFloat(e.target.value);
@@ -740,7 +743,7 @@ document.getElementById("show-addr").addEventListener("change", (e) => {
 function openOptions() {
   const v = state.settings.announce_interval;
   const c = state.settings.announce_cap;
-  document.getElementById("opt-announce-interval").value = (v === undefined || v === null) ? 30 : v;
+  document.getElementById("opt-announce-interval").value = (v === undefined || v === null) ? 300 : v;
   document.getElementById("opt-announce-cap").value = (c === undefined || c === null) ? 2 : c;
   const ll = state.settings.loglevel;
   document.getElementById("opt-loglevel").value = String((ll === undefined || ll === null) ? 4 : ll);
@@ -752,7 +755,7 @@ document.getElementById("options-close").onclick = () => document.getElementById
 document.getElementById("options-save").onclick = () => {
   const body = {};
   const iv = parseFloat(document.getElementById("opt-announce-interval").value);
-  if (!isNaN(iv)) body.announce_interval = Math.max(0, iv);
+  if (!isNaN(iv)) { let c = Math.max(0, iv); if (c > 0 && c < 60) c = 60; body.announce_interval = c; }
   const cap = parseFloat(document.getElementById("opt-announce-cap").value);
   if (!isNaN(cap)) body.announce_cap = Math.max(0.1, Math.min(100, cap));
   const ll = parseInt(document.getElementById("opt-loglevel").value);
