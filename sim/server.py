@@ -189,6 +189,12 @@ def post_announce(node_id: str):
     return {"ok": ok}
 
 
+@app.post("/api/nodes/{node_id}/announce_lxmf")
+def post_announce_lxmf(node_id: str):
+    ok = sim.announce_lxmf(node_id)
+    return {"ok": ok}
+
+
 @app.delete("/api/nodes/{node_id}")
 def delete_node(node_id: str):
     removed = sim.remove_node(node_id)

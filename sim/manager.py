@@ -380,6 +380,14 @@ class Simulator:
         thread.start()
         return True
 
+    def announce_lxmf(self, node_id):
+        if node_id not in self.topology.nodes:
+            return False
+        if not self.active:
+            self.emit({"type": "announce", "node": node_id, "line": "simulation not running"})
+            return False
+        return self.node_manager.send_to_messenger(node_id, "announce")
+
     def _announce_worker(self, node_id, cfg_dir):
         proc = subprocess.Popen(
             [sys.executable, "-m", "sim.traffic", "announce", "--config", cfg_dir],
@@ -498,7 +506,11 @@ class Simulator:
             return
         dst_dir = self.node_manager.config_dir_for(dst)
         src_dir = self.node_manager.config_dir_for(src)
-        self.emit({"type": "traffic", "stage": "begin", "src": src, "dst": dst, "size": size})
+        src_name = self.topology.nodes[src].get("label", src)
+        dst_name = self.topology.nodes[dst].get("label", dst)
+        expected = self.expected_rtt(src, dst, size)
+        self.emit({"type": "traffic", "stage": "begin", "src": src, "dst": dst,
+                   "src_name": src_name, "dst_name": dst_name, "size": size, "expected": expected})
 
         recv = subprocess.Popen(
             [sys.executable, "-m", "sim.traffic", "recv", "--config", dst_dir, "--timeout", "90"],
@@ -539,7 +551,19 @@ class Simulator:
             bufsize=1,
         )
 
-        send_thread = threading.Thread(target=self._read_process, args=(send, "send", lambda line: None))
+        result = {"status": "failed", "rtt": None}
+
+        def send_line(line):
+            if line.startswith("SEND COMPLETE"):
+                result["status"] = "complete"
+                for tok in line.split(" "):
+                    if tok.startswith("rtt="):
+                        try:
+                            result["rtt"] = float(tok[4:])
+                        except Exception:
+                            result["rtt"] = None
+
+        send_thread = threading.Thread(target=self._read_process, args=(send, "send", send_line))
         send_thread.daemon = True
         send_thread.start()
 
@@ -548,6 +572,9 @@ class Simulator:
             recv.terminate()
         except Exception:
             pass
+        self.emit({"type": "traffic", "stage": "result", "src": src, "dst": dst,
+                   "src_name": src_name, "dst_name": dst_name, "size": size,
+                   "expected": expected, "actual_rtt": result["rtt"], "status": result["status"]})
         self.emit({"type": "traffic", "stage": "end", "src": src, "dst": dst})
 
     def reset(self):

@@ -115,11 +115,12 @@ def run_send(configdir, dest_hex, size, timeout):
         ASPECT,
     )
 
-    state = {"done": False, "last": -1.0}
+    state = {"done": False, "last": -1.0, "t0": None}
 
     def resource_done(resource):
         if resource.status == RNS.Resource.COMPLETE:
-            emit("SEND COMPLETE " + str(size))
+            rtt = time.time() - state["t0"] if state["t0"] is not None else 0.0
+            emit("SEND COMPLETE %d rtt=%.3f" % (size, rtt))
         else:
             emit("SEND FAILED")
         state["done"] = True
@@ -140,6 +141,7 @@ def run_send(configdir, dest_hex, size, timeout):
             emit("SEND LINKCLOSED")
             state["done"] = True
 
+    state["t0"] = time.time()
     link = RNS.Link(destination)
     link.set_link_established_callback(link_established)
     link.set_link_closed_callback(link_closed)

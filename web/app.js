@@ -250,7 +250,7 @@ function showHostPanel(id, title, body) {
   const effCap = (node.announce_cap !== undefined && node.announce_cap !== null) ? node.announce_cap : defCap;
   html += '<div class="row"><label>Announce cap (%)</label><input id="f-cap" type="number" min="0.1" max="100" step="0.1" value="' + effCap + '"></div>';
   html += '<div class="row"><label>Color</label><span><input id="f-color" type="color" value="' + nodeColor(id) + '"><button id="f-color-reset">reset</button></span></div>';
-  html += '<div class="row"><button id="panel-announce">Announce</button><button id="panel-restart">Restart</button></div>';
+  html += '<div class="row"><button id="panel-announce">Announce</button><button id="panel-announce-lxmf">Announce LXMF</button><button id="panel-restart">Restart</button></div>';
   html += '<div class="row"><button id="panel-chat">Open Chat</button><button id="panel-log">View RNS log</button></div>';
   let bridgeCfg = null;
   if (transport) {
@@ -318,6 +318,7 @@ function showHostPanel(id, title, body) {
     colorEl.value = nodeColor(id);
   };
   document.getElementById("panel-announce").onclick = () => api.post("/api/nodes/" + id + "/announce");
+  document.getElementById("panel-announce-lxmf").onclick = () => api.post("/api/nodes/" + id + "/announce_lxmf");
   document.getElementById("panel-restart").onclick = () => api.post("/api/nodes/" + id + "/restart");
   document.getElementById("panel-chat").onclick = () => openChat(id);
   document.getElementById("panel-log").onclick = () => openLog(id);
@@ -471,7 +472,27 @@ function logEvent(event) {
   let text = "";
   if (event.type === "drop") { cls = "log-drop"; text = "DROP " + event.src + " -> " + event.dst + " on " + event.medium + " (" + event.size + "B)"; }
   else if (event.type === "oversize") { cls = "log-oversize"; text = "OVERSIZE " + event.node + " on " + event.medium + " (" + event.size + " > " + event.mtu + ")"; }
-  else if (event.type === "traffic") { cls = "log-traffic"; text = "[" + event.stage + "] " + (event.line || JSON.stringify(event)); }
+  else if (event.type === "traffic") {
+    cls = "log-traffic";
+    const rttMs = (s) => (s === null || s === undefined) ? "?" : Math.round(s * 1000);
+    if (event.stage === "begin") {
+      const exp = event.expected;
+      const route = (event.src_name || event.src) + " → " + (event.dst_name || event.dst);
+      text = "▶ resource " + route + " · " + event.size + " B" +
+             (exp ? "\n↳ expected rtt ~" + rttMs(exp.rtt) + "ms (" + exp.hops + " hops)" : "");
+    } else if (event.stage === "result") {
+      const exp = event.expected;
+      const ok = event.status === "complete";
+      cls = ok ? "log-deliver" : "log-drop";
+      text = (ok ? "✓ resource complete" : "✗ resource failed") +
+             " · expected ~" + (exp ? rttMs(exp.rtt) : "?") + "ms" +
+             (ok ? " vs final " + rttMs(event.actual_rtt) + "ms" : "") +
+             " (" + (exp ? exp.hops : "?") + " hops)" +
+             "\n↳ " + (event.src_name || event.src) + " → " + (event.dst_name || event.dst);
+    } else {
+      text = "[" + event.stage + "] " + (event.line || JSON.stringify(event));
+    }
+  }
   else if (event.type === "announce") { cls = "log-announce"; text = event.address ? (event.node + " announced " + event.address.slice(0, 16) + "…") : (event.node + " announce: " + (event.line || "")); }
   else if (event.type === "sim") { cls = "log-sim"; text = "simulation " + (event.active ? "started" : "stopped"); }
   else if (event.type === "log") { cls = "log-node"; text = event.node + ": " + event.line; }
