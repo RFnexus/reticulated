@@ -82,7 +82,7 @@ def run_recv(configdir, timeout):
         now = time.time()
         if not state["linked"] and now >= next_announce:
             destination.announce()
-            next_announce = now + 5.0
+            next_announce = now + 60.0
         time.sleep(0.2)
     if not state["done"]:
         emit("RECV TIMEOUT")
