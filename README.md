@@ -4,18 +4,19 @@
 
 <img src="docs/reticulated_logo.webp">
 
-Reticulated is a Reticulum Network simulator that spawns live, interactive Reticulum instances controllable from a node-based Web UI. 
+Reticulated is a Reticulum Network simulator that spawns live, interactive [Reticulum](https://github.com/markqvist/reticulum) instances controllable from a node-based Web UI. 
 
 You can create networks of any topology and set bitrate, MTU, and configure path loss and propagation behavior. It provides a top-down view to a live network. You can connect any Reticulum application to the simulated network. It also has built in utilities like a basic LXMF chat function and Resource transfer included.
 
 <img src="docs/screen1.webp">
-
+<img src="docs/screen2.webp">
 
 
 
 ### Requirements
 
 - Python 3.10+
+- `lxmf`
 - `rnsd`, `rnstatus`, `rnpath` on `PATH` (installed with the `rns` package)
 
 ## Install and run
