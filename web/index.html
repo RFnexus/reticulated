@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reticulated</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/vendor/cytoscape.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <span id="title">Reticulated</span>
+    <span id="sim-state" class="badge stopped">stopped</span>
+    <button id="btn-start">Start</button>
+    <button id="btn-stop">Stop</button>
+    <span class="sep"></span>
+    <button id="btn-add-node">Add Node</button>
+    <button id="btn-add-link" disabled>Add Link</button>
+    <button id="btn-delete">Delete Selected</button>
+    <span class="sep"></span>
+    <label id="show-addr-label"><input id="show-addr" type="checkbox"> Show addresses</label>
+    <button id="btn-options">Options</button>
+    <button id="btn-generate">Generate</button>
+    <button id="btn-layout" class="hold-btn" title="Hold 2 seconds to lay out the graph"><span>Layout</span></button>
+    <span class="sep"></span>
+    <button id="btn-save">Save</button>
+    <button id="btn-load">Load</button>
+    <input id="file-load" type="file" accept="application/json,.json" style="display:none">
+    <span class="sep"></span>
+    <span id="hint">Click two nodes to then Add Link</span>
+    <button id="btn-reset" class="hold-btn" title="Hold 3 seconds to reset everything"><span>Hold to Reset</span></button>
+  </div>
+  <div id="main">
+    <div id="cy"></div>
+    <div id="sidebar">
+      <div id="panel">
+        <h3 id="panel-title">Details</h3>
+        <div id="panel-body">Select a node or link.</div>
+      </div>
+      <div id="traffic-box">
+        <h3>Traffic</h3>
+        <div class="row"><label>Source</label><span id="traffic-src">-</span></div>
+        <div class="row"><label>Destination</label><span id="traffic-dst">-</span></div>
+        <div class="row"><label>Size (bytes)</label><input id="traffic-size" type="number" value="32768" min="1"></div>
+        <div class="row"><button id="btn-traffic" disabled>Send Resource</button><button id="btn-route" disabled>Trace Route</button></div>
+        <div id="route-info" class="muted"></div>
+      </div>
+      <div id="log-box">
+        <div class="log-header">
+          <h3>Events</h3>
+          <button id="btn-clear-log">clear</button>
+        </div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="log-modal" class="hidden">
+  <div id="log-window">
+    <div class="modal-header"><span id="log-title">RNS log</span><span><button id="log-refresh">refresh</button> <button id="log-close">close</button></span></div>
+    <pre id="log-content" class="log-content"></pre>
+  </div>
+</div>
+<div id="gen-modal" class="hidden">
+  <div id="gen-window">
+    <div class="modal-header"><span>Generate random topology</span><button id="gen-close">close</button></div>
+    <div class="opt-row"><label>Number of nodes</label><input id="gen-nodes" type="number" min="2" max="100" value="12"></div>
+    <div class="opt-row"><label>Shape</label><select id="gen-shape">
+      <option value="hub" selected>Hub &amp; spoke</option>
+      <option value="mesh">Mesh</option>
+      <option value="tree">Tree</option>
+    </select></div>
+    <div class="opt-row"><label>Max hops (longest path / backbone length)</label><input id="gen-hops" type="number" min="2" max="12" value="4"></div>
+    <div class="opt-row"><label>Max link loss (0 = none)</label><input id="gen-loss" type="number" min="0" max="1" step="0.01" value="0"></div>
+    <div class="opt-row">
+      <label>Link presets (mix &amp; match)</label>
+      <div id="gen-presets" class="gen-presets">
+        <label><input type="checkbox" value="tcp"> TCP / LAN</label>
+        <label><input type="checkbox" value="ethernet"> Ethernet</label>
+        <label><input type="checkbox" value="packet1200"> Packet radio 1200</label>
+        <label><input type="checkbox" value="packet9600" checked> Packet radio 9600</label>
+        <label><input type="checkbox" value="lora_fast"> LoRa fast (SF7/500)</label>
+        <label><input type="checkbox" value="lora_mid" checked> LoRa mid (SF7/125)</label>
+        <label><input type="checkbox" value="lora_slow"> LoRa slow (SF12/125)</label>
+      </div>
+    </div>
+    <div class="opt-row"><span class="muted">Replaces the current topology. Relay nodes are set to transport automatically.</span></div>
+    <div class="opt-row"><button id="gen-go">Generate</button></div>
+  </div>
+</div>
+<div id="options-modal" class="hidden">
+  <div id="options-window">
+    <div class="modal-header"><span>Announce options</span><button id="options-close">close</button></div>
+    <div class="opt-row">
+      <label>LXMF announce interval (seconds, 0 = manual only)</label>
+      <input id="opt-announce-interval" type="number" min="0" step="1" value="30">
+    </div>
+    <div class="opt-row">
+      <label>Announce cap (% of link bitrate)</label>
+      <input id="opt-announce-cap" type="number" min="0.1" max="100" step="0.1" value="2">
+      <span class="muted">RNS default 2%. Higher = faster announce propagation on slow links. Thsi will restart running nodes.</span>
+    </div>
+    <div class="opt-row">
+      <label>RNS log level</label>
+      <select id="opt-loglevel">
+        <option value="0">0 Critical</option>
+        <option value="1">1  Error</option>
+        <option value="2">2  Warning</option>
+        <option value="3">3  Notice</option>
+        <option value="4" selected>4  Info</option>
+        <option value="5">5  Verbose</option>
+        <option value="6">6  Debug</option>
+        <option value="7">7  Extreme</option>
+      </select>
+      <span class="muted">Applies to all nodes rnsd. Restarts running nodes.</span>
+    </div>
+    <div class="opt-row"><button id="options-save">Save</button></div>
+  </div>
+</div>
+<div id="chat-modal" class="hidden">
+  <div id="chat-window">
+    <div id="chat-header">
+      <span id="chat-title">Chat</span>
+      <button id="chat-close">close</button>
+    </div>
+    <div class="chat-row">
+      <label>To</label>
+      <select id="chat-peer"></select>
+    </div>
+    <div id="chat-log"></div>
+    <div id="chat-input-row">
+      <input id="chat-text" type="text" placeholder="Type a message…" autocomplete="off">
+      <button id="chat-send">Send</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
