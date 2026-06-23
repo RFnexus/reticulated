@@ -21,6 +21,7 @@ class Topology:
             "y": float(y),
             "transport": False,
             "mode": "full",
+            "link_modes": {},
         }
         return node_id
 
@@ -51,6 +52,34 @@ class Topology:
             return False
         node["mode"] = mode
         return True
+
+    def set_node_link_mode(self, node_id, link_id, mode):
+        node = self.nodes.get(node_id)
+        link = self.links.get(link_id)
+        if node is None or link is None or node_id not in link["members"]:
+            return False
+        if mode is not None and mode not in Topology.INTERFACE_MODES:
+            return False
+        link_modes = node.setdefault("link_modes", {})
+        if mode is None:
+            link_modes.pop(link_id, None)
+        else:
+            link_modes[link_id] = mode
+        return True
+
+    def node_link_mode(self, node_id, link_id):
+        node = self.nodes.get(node_id)
+        if node is None:
+            return "full"
+        return node.get("link_modes", {}).get(link_id) or node.get("mode", "full")
+
+    def prune_link_mode(self, link_id, keep_members=None):
+        for node_id, node in self.nodes.items():
+            link_modes = node.get("link_modes")
+            if not link_modes or link_id not in link_modes:
+                continue
+            if keep_members is None or node_id not in keep_members:
+                link_modes.pop(link_id, None)
 
     def set_node_field(self, node_id, key, value):
         node = self.nodes.get(node_id)
@@ -89,7 +118,10 @@ class Topology:
         return link_id
 
     def remove_link(self, link_id):
-        return self.links.pop(link_id, None) is not None
+        removed = self.links.pop(link_id, None) is not None
+        if removed:
+            self.prune_link_mode(link_id)
+        return removed
 
     def set_link_params(self, link_id, mtu=None, bitrate=None, loss=None, propagation=None):
         link = self.links.get(link_id)
@@ -110,6 +142,7 @@ class Topology:
         if link is None:
             return False
         link["members"] = [m for m in members if m in self.nodes]
+        self.prune_link_mode(link_id, keep_members=link["members"])
         return True
 
     def update_link(self, link_id, x=None, y=None):
