@@ -101,7 +101,7 @@ class NodeManager:
             lines.append("  [[medium-" + link["id"] + "]]")
             lines.append("    type = SimInterface")
             lines.append("    enabled = yes")
-            lines.append("    mode = " + mode)
+            lines.append("    mode = " + link.get("mode", mode))
             lines.append("    node = " + node_id)
             lines.append("    medium = " + link["id"])
             lines.append("    target_host = " + self.hub_host)

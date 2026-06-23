@@ -93,6 +93,11 @@ class DropBody(BaseModel):
     destination: str
 
 
+class LinkModeBody(BaseModel):
+    link_id: str
+    mode: str | None = None
+
+
 async def broadcast(event):
     async with clients_lock:
         targets = list(clients)
@@ -181,6 +186,12 @@ def patch_node(node_id: str, body: NodeUpdate):
     if config_fields:
         sim.set_node_options(node_id, config_fields)
     return {"ok": True}
+
+
+@app.post("/api/nodes/{node_id}/link_mode")
+def post_link_mode(node_id: str, body: LinkModeBody):
+    ok = sim.set_node_link_mode(node_id, body.link_id, body.mode)
+    return {"ok": ok}
 
 
 @app.post("/api/nodes/{node_id}/announce")

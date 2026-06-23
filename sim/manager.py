@@ -101,10 +101,14 @@ class Simulator:
             "loglevel": loglevel,
         } for nid, node in self.topology.nodes.items()}
         for link_id, link in self.topology.links.items():
-            entry = {"id": link_id, "mtu": link["mtu"], "bitrate": link["bitrate"]}
             for nid in link["members"]:
                 if nid in result:
-                    result[nid]["links"].append(entry)
+                    result[nid]["links"].append({
+                        "id": link_id,
+                        "mtu": link["mtu"],
+                        "bitrate": link["bitrate"],
+                        "mode": self.topology.node_link_mode(nid, link_id),
+                    })
         return result
 
     def sync(self):
@@ -147,6 +151,15 @@ class Simulator:
                     self.topology.set_node_field(node_id, key, fields[key])
             self.sync()
         self.emit({"type": "topology"})
+        return ok
+
+    def set_node_link_mode(self, node_id, link_id, mode):
+        with self.lock:
+            ok = self.topology.set_node_link_mode(node_id, link_id, mode)
+            if ok:
+                self.sync()
+        if ok:
+            self.emit({"type": "topology"})
         return ok
 
     def set_announce_cap(self, cap):

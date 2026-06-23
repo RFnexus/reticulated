@@ -141,6 +141,8 @@ const cy = cytoscape({
     { selector: "edge.announce-flash", style: { "line-color": "#ffd34d", "width": 5 }},
     { selector: "edge.route", style: { "line-color": "#ff9d3c", "width": 5 }},
     { selector: "node.route", style: { "border-color": "#ff9d3c", "border-width": 5 }},
+    { selector: "edge.msgpath", style: { "line-color": "#bb6bff", "width": 5 }},
+    { selector: "node.msgpath", style: { "border-color": "#bb6bff", "border-width": 5 }},
     { selector: ":selected", style: { "border-color": "#ffd34d", "border-width": 4 }},
   ],
 });
@@ -240,9 +242,28 @@ function showHostPanel(id, title, body) {
   html += '<pre class="addr-pre">' + escapeHtml(addr) + "</pre>";
   html += '<div class="row"><label>State</label><span id="panel-state">' + (st ? (st.online ? "online" : "offline") : "unknown") + "</span></div>";
   html += '<div class="row"><label>Transport (router)</label><input id="f-transport" type="checkbox"' + (transport ? " checked" : "") + "></div>";
-  let opts = "";
-  for (const m of MODES) opts += '<option value="' + m + '"' + (m === mode ? " selected" : "") + ">" + m + "</option>";
-  html += '<div class="row"><label>Mode</label><select id="f-mode">' + opts + "</select></div>";
+  if (transport) {
+    let opts = "";
+    for (const m of MODES) opts += '<option value="' + m + '"' + (m === mode ? " selected" : "") + ">" + m + "</option>";
+    html += '<div class="row"><label>Mode (default)</label><select id="f-mode">' + opts + "</select></div>";
+    const myLinks = [];
+    for (const lid in state.topology.links) {
+      const l = state.topology.links[lid];
+      if (l.members && l.members.indexOf(id) !== -1) myLinks.push([lid, l]);
+    }
+    if (myLinks.length) {
+      const linkModes = node.link_modes || {};
+      html += '<details class="section"' + (myLinks.length > 1 ? " open" : "") + '><summary>Per-interface mode</summary>';
+      for (const [lid, l] of myLinks) {
+        const peers = l.members.filter((m) => m !== id).map(nodeLabel).join(", ") || "(self)";
+        const cur = linkModes[lid] || "";
+        let o = '<option value=""' + (cur === "" ? " selected" : "") + ">default (" + escapeHtml(mode) + ")</option>";
+        for (const m of MODES) o += '<option value="' + m + '"' + (m === cur ? " selected" : "") + ">" + m + "</option>";
+        html += '<div class="row"><label>→ ' + escapeHtml(peers) + '</label><select class="f-imode" data-link="' + lid + '">' + o + "</select></div>";
+      }
+      html += '<div class="row"><span class="muted">Overrides the node mode for one interface. Changing restarts the node.</span></div></details>';
+    }
+  }
   const defInterval = state.settings.announce_interval !== undefined ? state.settings.announce_interval : 300;
   const effInterval = (node.announce_interval !== undefined && node.announce_interval !== null) ? node.announce_interval : defInterval;
   html += '<div class="row"><label>Announce interval (s)</label><input id="f-announce" type="number" min="0" step="1" value="' + effInterval + '"></div>';
@@ -268,7 +289,7 @@ function showHostPanel(id, title, body) {
       html += '<div class="row"><button id="bridge-copy">Copy interface</button><span class="muted">paste into your Reticulum config (node must be running)</span></div></details>';
     }
   } else {
-    html += '<div class="row"><span class="muted">Enable Transport to expose rate limiting and a connectable interface.</span></div>';
+    html += '<div class="row"><span class="muted">Enable Transport to configure interface modes, rate limiting, and a connectable interface.</span></div>';
   }
   html += '<details class="section" open><summary>Announces heard</summary><div id="heard" class="muted">loading…</div></details>';
   body.innerHTML = html;
@@ -281,8 +302,29 @@ function showHostPanel(id, title, body) {
     const n = cy.getElementById(id);
     if (n) n.data("label", nodeDisplayLabel(id));
   });
-  document.getElementById("f-transport").addEventListener("change", (e) => api.patch("/api/nodes/" + id, { transport: e.target.checked }));
-  document.getElementById("f-mode").addEventListener("change", (e) => api.patch("/api/nodes/" + id, { mode: e.target.value }));
+  document.getElementById("f-transport").addEventListener("change", (e) => {
+    api.patch("/api/nodes/" + id, { transport: e.target.checked });
+    if (state.topology.nodes[id]) state.topology.nodes[id].transport = e.target.checked;
+    showHostPanel(id, document.getElementById("panel-title"), document.getElementById("panel-body"));
+  });
+  const modeSel = document.getElementById("f-mode");
+  if (modeSel) modeSel.addEventListener("change", (e) => {
+    api.patch("/api/nodes/" + id, { mode: e.target.value });
+    if (state.topology.nodes[id]) state.topology.nodes[id].mode = e.target.value;
+    showHostPanel(id, document.getElementById("panel-title"), document.getElementById("panel-body"));
+  });
+  document.querySelectorAll(".f-imode").forEach((sel) => {
+    sel.addEventListener("change", (e) => {
+      const lid = e.target.getAttribute("data-link");
+      const val = e.target.value;
+      api.post("/api/nodes/" + id + "/link_mode", { link_id: lid, mode: val || null });
+      const n = state.topology.nodes[id];
+      if (n) {
+        n.link_modes = n.link_modes || {};
+        if (val) n.link_modes[lid] = val; else delete n.link_modes[lid];
+      }
+    });
+  });
   document.getElementById("f-announce").addEventListener("change", (e) => {
     let v = parseFloat(e.target.value);
     v = isNaN(v) ? 0 : Math.max(0, v);
@@ -555,7 +597,12 @@ function handleEvent(event) {
   if (event.type === "frame") { animateAnnounce(event); return; }
   if (event.type === "lxmf_up") { state.lxmf[event.node] = event.address; rebuildLxmfMap(); if (state.chatNode) populatePeers(); return; }
   if (event.type === "message") { receiveMessage(event); return; }
-  if (event.type === "message_status") { const t = formatMsgStatus(event.status); if (t) addChatStatus(event.node, t); return; }
+  if (event.type === "message_status") {
+    const t = formatMsgStatus(event.status);
+    if (t) addChatStatus(event.node, t);
+    if (event.node === state.chatNode && (event.status.indexOf("DELIVERED") === 0 || event.status.indexOf("SENDFAIL") === 0)) setTimeout(clearMsgPath, 1500);
+    return;
+  }
   if (event.type === "settings") { state.settings = event.settings || {}; return; }
   if (event.type === "link_update") {
     const l = state.topology.links[event.link];
@@ -662,15 +709,10 @@ document.getElementById("btn-traffic").onclick = () => {
   }
 };
 
-function clearRoute() {
-  cy.elements().removeClass("route");
-}
-
-function highlightRoute(path) {
-  clearRoute();
+function applyPathClass(path, cls) {
   for (const nid of path) {
     const n = cy.getElementById(nid);
-    if (n && n.nonempty()) n.addClass("route");
+    if (n && n.nonempty()) n.addClass(cls);
   }
   for (let i = 0; i < path.length - 1; i++) {
     const a = path[i];
@@ -680,12 +722,36 @@ function highlightRoute(path) {
       if (l.members.indexOf(a) >= 0 && l.members.indexOf(b) >= 0) {
         for (const eid of [lid, lid + "__" + a, lid + "__" + b]) {
           const el = cy.getElementById(eid);
-          if (el && el.nonempty()) el.addClass("route");
+          if (el && el.nonempty()) el.addClass(cls);
         }
         break;
       }
     }
   }
+}
+
+function clearRoute() {
+  cy.elements().removeClass("route");
+}
+
+function highlightRoute(path) {
+  clearRoute();
+  applyPathClass(path, "route");
+}
+
+function clearMsgPath() {
+  cy.elements().removeClass("msgpath");
+}
+
+async function showMsgPath(src, dst) {
+  if (!src || !dst || src === dst) return;
+  try {
+    const r = await api.get("/api/route?src=" + encodeURIComponent(src) + "&dst=" + encodeURIComponent(dst));
+    if (r.path && r.path.length) {
+      clearMsgPath();
+      applyPathClass(r.path, "msgpath");
+    }
+  } catch (e) {}
 }
 
 document.getElementById("btn-route").onclick = async () => {
@@ -900,6 +966,7 @@ function populatePeers() {
 
 function closeChat() {
   state.chatNode = null;
+  clearMsgPath();
   document.getElementById("chat-modal").classList.add("hidden");
 }
 
@@ -976,6 +1043,7 @@ function sendChat() {
   const text = textEl.value;
   if (!dst || !text.trim()) return;
   api.post("/api/message", { src: state.chatNode, dst: dst, text: text });
+  showMsgPath(state.chatNode, dst);
   pushChat(state.chatNode, { dir: "out", peer: nodeLabel(dst), text: text });
   textEl.value = "";
 }

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reticulated"
+version = "1.0.2"
+description = "Reticulum Network Stack Simulator"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "Unlicense" }
+authors = [
+  { name = "RFnexus" }
+]
+dependencies = [
+  "rns",
+  "lxmf",
+  "fastapi",
+  "uvicorn[standard]",
+  "websockets"
+]
+
+[project.urls]
+Homepage = "https://github.com/RFnexus/reticulated"
+Repository = "https://github.com/RFnexus/reticulated"
+
+[project.scripts]
+reticulated = "run:main"
+
+[tool.setuptools]
+include-package-data = true
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+include = ["sim*"]
