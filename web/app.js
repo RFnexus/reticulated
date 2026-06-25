@@ -242,25 +242,27 @@ function showHostPanel(id, title, body) {
   html += '<pre class="addr-pre">' + escapeHtml(addr) + "</pre>";
   html += '<div class="row"><label>State</label><span id="panel-state">' + (st ? (st.online ? "online" : "offline") : "unknown") + "</span></div>";
   html += '<div class="row"><label>Transport (router)</label><input id="f-transport" type="checkbox"' + (transport ? " checked" : "") + "></div>";
-  let opts = "";
-  for (const m of MODES) opts += '<option value="' + m + '"' + (m === mode ? " selected" : "") + ">" + m + "</option>";
-  html += '<div class="row"><label>Mode (default)</label><select id="f-mode">' + opts + "</select></div>";
-  const myLinks = [];
-  for (const lid in state.topology.links) {
-    const l = state.topology.links[lid];
-    if (l.members && l.members.indexOf(id) !== -1) myLinks.push([lid, l]);
-  }
-  if (myLinks.length) {
-    const linkModes = node.link_modes || {};
-    html += '<details class="section"' + (myLinks.length > 1 ? " open" : "") + '><summary>Per-interface mode</summary>';
-    for (const [lid, l] of myLinks) {
-      const peers = l.members.filter((m) => m !== id).map(nodeLabel).join(", ") || "(self)";
-      const cur = linkModes[lid] || "";
-      let o = '<option value=""' + (cur === "" ? " selected" : "") + ">default (" + escapeHtml(mode) + ")</option>";
-      for (const m of MODES) o += '<option value="' + m + '"' + (m === cur ? " selected" : "") + ">" + m + "</option>";
-      html += '<div class="row"><label>→ ' + escapeHtml(peers) + '</label><select class="f-imode" data-link="' + lid + '">' + o + "</select></div>";
+  if (transport) {
+    let opts = "";
+    for (const m of MODES) opts += '<option value="' + m + '"' + (m === mode ? " selected" : "") + ">" + m + "</option>";
+    html += '<div class="row"><label>Mode (default)</label><select id="f-mode">' + opts + "</select></div>";
+    const myLinks = [];
+    for (const lid in state.topology.links) {
+      const l = state.topology.links[lid];
+      if (l.members && l.members.indexOf(id) !== -1) myLinks.push([lid, l]);
     }
-    html += '<div class="row"><span class="muted">Overrides the node mode for one interface. Changing restarts the node.</span></div></details>';
+    if (myLinks.length) {
+      const linkModes = node.link_modes || {};
+      html += '<details class="section"' + (myLinks.length > 1 ? " open" : "") + '><summary>Per-interface mode</summary>';
+      for (const [lid, l] of myLinks) {
+        const peers = l.members.filter((m) => m !== id).map(nodeLabel).join(", ") || "(self)";
+        const cur = linkModes[lid] || "";
+        let o = '<option value=""' + (cur === "" ? " selected" : "") + ">default (" + escapeHtml(mode) + ")</option>";
+        for (const m of MODES) o += '<option value="' + m + '"' + (m === cur ? " selected" : "") + ">" + m + "</option>";
+        html += '<div class="row"><label>→ ' + escapeHtml(peers) + '</label><select class="f-imode" data-link="' + lid + '">' + o + "</select></div>";
+      }
+      html += '<div class="row"><span class="muted">Overrides the node mode for one interface. Changing restarts the node.</span></div></details>';
+    }
   }
   const defInterval = state.settings.announce_interval !== undefined ? state.settings.announce_interval : 300;
   const effInterval = (node.announce_interval !== undefined && node.announce_interval !== null) ? node.announce_interval : defInterval;
@@ -287,7 +289,7 @@ function showHostPanel(id, title, body) {
       html += '<div class="row"><button id="bridge-copy">Copy interface</button><span class="muted">paste into your Reticulum config (node must be running)</span></div></details>';
     }
   } else {
-    html += '<div class="row"><span class="muted">Enable Transport to expose rate limiting and a connectable interface.</span></div>';
+    html += '<div class="row"><span class="muted">Enable Transport to configure interface modes, rate limiting, and a connectable interface.</span></div>';
   }
   html += '<details class="section" open><summary>Announces heard</summary><div id="heard" class="muted">loading…</div></details>';
   body.innerHTML = html;
@@ -300,8 +302,13 @@ function showHostPanel(id, title, body) {
     const n = cy.getElementById(id);
     if (n) n.data("label", nodeDisplayLabel(id));
   });
-  document.getElementById("f-transport").addEventListener("change", (e) => api.patch("/api/nodes/" + id, { transport: e.target.checked }));
-  document.getElementById("f-mode").addEventListener("change", (e) => {
+  document.getElementById("f-transport").addEventListener("change", (e) => {
+    api.patch("/api/nodes/" + id, { transport: e.target.checked });
+    if (state.topology.nodes[id]) state.topology.nodes[id].transport = e.target.checked;
+    showHostPanel(id, document.getElementById("panel-title"), document.getElementById("panel-body"));
+  });
+  const modeSel = document.getElementById("f-mode");
+  if (modeSel) modeSel.addEventListener("change", (e) => {
     api.patch("/api/nodes/" + id, { mode: e.target.value });
     if (state.topology.nodes[id]) state.topology.nodes[id].mode = e.target.value;
     showHostPanel(id, document.getElementById("panel-title"), document.getElementById("panel-body"));
