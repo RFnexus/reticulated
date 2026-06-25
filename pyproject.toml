@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reticulated"
-version = "1.0.2"
+version = "1.0.3"
 description = "Reticulum Network Stack Simulator"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 license = { text = "Unlicense" }
 authors = [
   { name = "RFnexus" }
