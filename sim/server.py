@@ -46,6 +46,7 @@ class LinkBody(BaseModel):
 
 
 class LinkParams(BaseModel):
+    name: str | None = None
     mtu: int | None = None
     bitrate: int | None = None
     loss: float | None = None
@@ -222,7 +223,11 @@ def post_link(body: LinkBody):
 def patch_link(link_id: str, body: LinkParams):
     if body.x is not None or body.y is not None:
         sim.update_link(link_id, body.x, body.y)
-    ok = sim.set_link_params(link_id, body.mtu, body.bitrate, body.loss, body.propagation)
+    if body.name is not None:
+        sim.set_link_name(link_id, body.name)
+    ok = True
+    if any(v is not None for v in (body.mtu, body.bitrate, body.loss, body.propagation)):
+        ok = sim.set_link_params(link_id, body.mtu, body.bitrate, body.loss, body.propagation)
     return {"ok": ok}
 
 

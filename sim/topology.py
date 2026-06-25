@@ -103,11 +103,12 @@ class Topology:
             node["y"] = float(y)
         return True
 
-    def add_link(self, members, mtu=None, bitrate=None, loss=None, propagation=None, x=0.0, y=0.0):
+    def add_link(self, members, mtu=None, bitrate=None, loss=None, propagation=None, x=0.0, y=0.0, name=None):
         link_id = "l" + str(self.link_seq)
         self.link_seq += 1
         self.links[link_id] = {
             "members": [m for m in members if m in self.nodes],
+            "name": str(name) if name else "",
             "mtu": int(mtu) if mtu is not None else config.DEFAULT_MTU,
             "bitrate": int(bitrate) if bitrate is not None else config.DEFAULT_BITRATE,
             "loss": float(loss) if loss is not None else config.DEFAULT_LOSS,
@@ -116,6 +117,13 @@ class Topology:
             "y": float(y),
         }
         return link_id
+
+    def set_link_name(self, link_id, name):
+        link = self.links.get(link_id)
+        if link is None:
+            return False
+        link["name"] = "" if name is None else str(name)
+        return True
 
     def remove_link(self, link_id):
         removed = self.links.pop(link_id, None) is not None

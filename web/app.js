@@ -67,7 +67,8 @@ function lossColor(loss) {
 }
 
 function mediumLabel(link) {
-  return link.mtu + "B  " + fmtBitrate(link.bitrate) + "  " + Math.round(link.loss * 100) + "%";
+  const stats = link.mtu + "B  " + fmtBitrate(link.bitrate) + "  " + Math.round(link.loss * 100) + "%";
+  return link.name ? link.name + "\n" + stats : stats;
 }
 
 function rebuildAddrMap() {
@@ -134,6 +135,7 @@ const cy = cytoscape({
       "background-color": "data(color)", "label": "data(label)",
       "color": "#11151c", "text-valign": "center", "text-halign": "center",
       "font-size": 10, "font-weight": "bold",
+      "text-wrap": "wrap", "text-max-width": 116,
       "border-width": 2, "border-color": "#11151c",
     }},
     { selector: "node.medium.announce-pulse", style: { "border-color": "#ffd34d", "border-width": 6 }},
@@ -257,9 +259,10 @@ function showHostPanel(id, title, body) {
       for (const [lid, l] of myLinks) {
         const peers = l.members.filter((m) => m !== id).map(nodeLabel).join(", ") || "(self)";
         const cur = linkModes[lid] || "";
+        const descr = (l.name ? l.name + " · " : "") + fmtBitrate(l.bitrate);
         let o = '<option value=""' + (cur === "" ? " selected" : "") + ">default (" + escapeHtml(mode) + ")</option>";
         for (const m of MODES) o += '<option value="' + m + '"' + (m === cur ? " selected" : "") + ">" + m + "</option>";
-        html += '<div class="row"><label>→ ' + escapeHtml(peers) + '</label><select class="f-imode" data-link="' + lid + '">' + o + "</select></div>";
+        html += '<div class="row"><label>→ ' + escapeHtml(peers) + ' <span class="muted">(' + escapeHtml(descr) + ')</span></label><select class="f-imode" data-link="' + lid + '">' + o + "</select></div>";
       }
       html += '<div class="row"><span class="muted">Overrides the node mode for one interface. Changing restarts the node.</span></div></details>';
     }
@@ -418,25 +421,58 @@ async function renderHeard(id) {
 function showLinkPanel(id, title, body) {
   const l = state.topology.links[id];
   if (!l) return;
-  title.textContent = "Link " + id;
+  title.textContent = "Link " + id + (l.name ? " · " + l.name : "");
   let presetOpts = "";
   LINK_PRESETS.forEach((p, i) => { presetOpts += '<option value="' + i + '">' + escapeHtml(p.label) + "</option>"; });
   const sfOpts = LORA_SF.map((s) => '<option value="' + s + '"' + (s === 9 ? " selected" : "") + ">SF" + s + "</option>").join("");
   const bwOpts = LORA_BW.map((b) => '<option value="' + b[0] + '"' + (b[0] === 125000 ? " selected" : "") + ">" + b[1] + "</option>").join("");
   const crOpts = LORA_CR.map((c) => '<option value="' + c[0] + '">' + c[1] + "</option>").join("");
+  let modesHtml = '<details class="section" open><summary>Interface modes (this connection)</summary>';
+  for (const m of l.members) {
+    const n = state.topology.nodes[m] || {};
+    const ndefault = n.mode || "full";
+    const cur = (n.link_modes && n.link_modes[id]) || "";
+    if (n.transport) {
+      let o = '<option value=""' + (cur === "" ? " selected" : "") + ">default (" + escapeHtml(ndefault) + ")</option>";
+      for (const mm of MODES) o += '<option value="' + mm + '"' + (mm === cur ? " selected" : "") + ">" + mm + "</option>";
+      modesHtml += '<div class="row"><label>' + escapeHtml(nodeLabel(m)) + '</label><select class="f-lmode" data-node="' + m + '">' + o + "</select></div>";
+    } else {
+      modesHtml += '<div class="row"><label>' + escapeHtml(nodeLabel(m)) + '</label><span class="muted">' + escapeHtml(cur || ndefault) + " · enable Transport to set</span></div>";
+    }
+  }
+  modesHtml += '<div class="row"><span class="muted">Each end\'s mode for this interface. Changing restarts that node.</span></div></details>';
   body.innerHTML =
+    '<div class="row"><label>Name</label><input id="f-link-name" type="text" placeholder="optional" value="' + escapeHtml(l.name || "") + '"></div>' +
     '<div class="row"><label>MTU (>=500)</label><input id="f-mtu" type="number" min="500" value="' + l.mtu + '"></div>' +
     '<div class="row"><label>Bitrate (bps)</label><input id="f-bitrate" type="number" min="1" value="' + l.bitrate + '"></div>' +
     '<div class="row"><label>Loss</label><input id="f-loss-range" type="range" min="0" max="1" step="0.01" value="' + l.loss + '"></div>' +
     '<div class="row"><label>Loss value</label><input id="f-loss" type="number" min="0" max="1" step="0.01" value="' + l.loss + '"></div>' +
     '<div class="row"><label>Propagation (s)</label><input id="f-prop" type="number" min="0" step="0.01" value="' + l.propagation + '"></div>' +
-    '<div class="row"><span class="muted">Members: ' + l.members.map(nodeLabel).join(", ") + "</span></div>" +
     '<div class="row"><span class="muted">Bitrate/loss/MTU apply live (no restart).</span></div>' +
+    modesHtml +
     '<details class="section"><summary>Bitrate presets / LoRa</summary>' +
     '<div class="row"><label>Preset</label><select id="f-preset">' + presetOpts + "</select></div>" +
     '<div class="row"><label>LoRa SF/BW/CR</label><span class="lora-selects"><select id="f-sf">' + sfOpts + '</select><select id="f-bw">' + bwOpts + '</select><select id="f-cr">' + crOpts + "</select></span></div>" +
     '<div class="row"><label>LoRa bitrate</label><span><span id="lora-bps" class="mono"></span> <button id="f-lora-apply">Set</button></span></div></details>' +
     '<details class="section" open><summary>Live medium stats</summary><div id="link-stats" class="muted">no traffic yet</div></details>';
+  const nameEl = document.getElementById("f-link-name");
+  if (nameEl) nameEl.addEventListener("change", () => {
+    const v = nameEl.value.trim();
+    api.patch("/api/links/" + id, { name: v });
+    if (state.topology.links[id]) state.topology.links[id].name = v;
+    const cyn = cy.getElementById(id);
+    if (cyn) cyn.data("label", mediumLabel(state.topology.links[id]));
+    title.textContent = "Link " + id + (v ? " · " + v : "");
+  });
+  document.querySelectorAll(".f-lmode").forEach((sel) => {
+    sel.addEventListener("change", (e) => {
+      const nid = e.target.getAttribute("data-node");
+      const val = e.target.value;
+      api.post("/api/nodes/" + nid + "/link_mode", { link_id: id, mode: val || null });
+      const n = state.topology.nodes[nid];
+      if (n) { n.link_modes = n.link_modes || {}; if (val) n.link_modes[id] = val; else delete n.link_modes[id]; }
+    });
+  });
   bindLinkInputs(id);
   bindLinkPresets(id);
   updateLinkStats(id);

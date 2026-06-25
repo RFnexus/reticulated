@@ -251,6 +251,14 @@ class Simulator:
             }})
         return ok
 
+    def set_link_name(self, link_id, name):
+        with self.lock:
+            ok = self.topology.set_link_name(link_id, name)
+            self.topology.save()
+        if ok:
+            self.emit({"type": "link_update", "link": link_id, "params": {"name": self.topology.links[link_id]["name"]}})
+        return ok
+
     def set_link_members(self, link_id, members):
         with self.lock:
             ok = self.topology.set_link_members(link_id, members)
