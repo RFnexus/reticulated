@@ -1,0 +1,6 @@
+# Applied only with an explicit compatible schema-v3 benchmark baseline.
+max_latency_regression_percent = 20.0
+max_goodput_regression_percent = 20.0
+min_delivery_rate = 1.0
+max_cpu_regression_percent = 25.0
+max_rss_regression_percent = 15.0

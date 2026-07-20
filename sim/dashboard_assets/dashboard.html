@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>__DASHBOARD_TITLE__</title>
+  <style>/*__DASHBOARD_CSS__*/</style>
+</head>
+<body>
+  <header class="shell masthead">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div><p class="eyebrow">RNS interoperability lab</p><h1>__DASHBOARD_TITLE__</h1></div>
+    </div>
+    <div class="header-actions">
+      <label class="button primary" for="report-files">Add reports</label>
+      <input id="report-files" type="file" accept="application/json,.json" multiple hidden>
+      <button id="clear-reports" class="button ghost" type="button">Clear</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Load scenario report JSON files">
+      <strong>Drop lab or scenario reports here</strong>
+      <span>Compare schema v1/v2 scenarios and schema v3 conformance or benchmark results. Files stay in this browser.</span>
+    </section>
+
+    <section id="empty-state" class="empty-state" hidden>
+      <div class="empty-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+      <h2>No reports loaded</h2>
+      <p>Add one or more scenario JSON reports to build the dashboard.</p>
+    </section>
+
+    <div id="dashboard" hidden>
+      <section class="report-strip">
+        <div>
+          <p class="eyebrow">Selected run</p>
+          <select id="report-select" aria-label="Selected report"></select>
+        </div>
+        <div id="selected-meta" class="selected-meta"></div>
+      </section>
+
+      <section id="kpi-grid" class="kpi-grid" aria-label="Key performance indicators"></section>
+
+      <section class="grid two-wide">
+        <article class="panel comparison-panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">Cross-scenario view</p><h2>Scenario comparison</h2></div>
+            <span id="report-count" class="quiet-pill"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="comparison-table">
+              <thead><tr><th>Scenario</th><th>Status</th><th>Nodes</th><th>Actions</th><th>Transfers</th><th>Faults</th><th>Max hops</th><th>Duration</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Implementation coverage</p><h2>Interop matrix</h2></div></div>
+          <div id="interop-matrix" class="matrix"></div>
+          <div id="implementation-mix" class="implementation-mix"></div>
+        </article>
+      </section>
+
+      <section class="grid twin">
+        <article class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Measured sender evidence</p><h2>Transfer latency</h2></div><span class="info" title="Only DELIVERED RTT evidence is treated as measured. EXPECT values are excluded.">i</span></div>
+          <div id="latency-chart" class="bar-chart"></div>
+          <p id="latency-note" class="panel-note"></p>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Simulated medium</p><h2>Frame counters</h2></div></div>
+          <div id="medium-counters" class="counter-grid"></div>
+          <div id="medium-profiles" class="profiles"></div>
+          <p class="panel-note">Per-medium forwarding counters. Dropped frames include intentional partition and disconnection tests.</p>
+        </article>
+      </section>
+
+      <section class="panel lab-panel">
+        <div class="panel-head"><div><p class="eyebrow">Schema v3 evidence</p><h2>Conformance, performance, and resources</h2></div></div>
+        <div id="lab-evidence" class="evidence-grid"></div>
+      </section>
+
+      <section class="panel actions-panel">
+        <div class="panel-head action-heading">
+          <div><p class="eyebrow">Scenario execution</p><h2>Actions and evidence</h2></div>
+          <div class="filters" role="group" aria-label="Action filters">
+            <button class="filter active" data-filter="all" type="button">All</button>
+            <button class="filter" data-filter="transfer" type="button">Transfers</button>
+            <button class="filter" data-filter="fault" type="button">Faults</button>
+            <button class="filter" data-filter="fail" type="button">Failures</button>
+            <select id="composition-filter" aria-label="Composition filter"><option value="all">All compositions</option></select>
+            <select id="direction-filter" aria-label="Direction filter"><option value="all">All directions</option></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="actions-table">
+            <thead><tr><th>#</th><th>Action</th><th>Status</th><th>Route / target</th><th>Impl.</th><th>Transfer</th><th>Hops</th><th>Attempts</th><th>Measured RTT</th><th>Action time</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="panel-note">Select an action row to inspect its retained events, route, delivery trace, and node logs.</p>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="detail-dialog">
+    <div class="dialog-head"><div><p class="eyebrow">Raw test evidence</p><h2 id="detail-title">Action details</h2></div><button id="detail-close" class="button ghost" type="button">Close</button></div>
+    <pre id="detail-content"></pre>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script>/*__DASHBOARD_DATA__*/</script>
+  <script>/*__DASHBOARD_JS__*/</script>
+</body>
+</html>

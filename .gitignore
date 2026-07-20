@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 .venv/
 .pycharm
+reports/
+results/
+*-results.json
+*-dashboard.html
+build/
+*.egg-info/

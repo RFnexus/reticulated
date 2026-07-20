@@ -1,0 +1,33 @@
+{
+  "name": "mixed-100",
+  "generate": {
+    "nodes": 100,
+    "rust_nodes": 50,
+    "transport_nodes": 10,
+    "bitrate": 10000000,
+    "mtu": 500,
+    "propagation": 0.001,
+    "loss": 0.0
+  },
+  "transfer_timeout": 120,
+  "actions": [
+    {"action": "wait_ready", "timeout": 180},
+    {"action": "announce", "nodes": ["n0", "n9", "n10", "n99"]},
+    {"action": "packet", "src": "n99", "dst": "n10", "size": 64},
+    {"action": "packet", "src": "n10", "dst": "n99", "size": 64},
+    {"action": "resource", "src": "n99", "dst": "n10", "size": 4096},
+    {"action": "resource", "src": "n10", "dst": "n99", "size": 4096},
+    {"action": "restart", "node": "n5"},
+    {"action": "restart", "node": "n4"},
+    {"action": "wait_ready", "timeout": 60},
+    {"action": "partition", "medium": "l0", "groups": [["n0"], ["n1"]]},
+    {"action": "sleep", "seconds": 1},
+    {"action": "recover", "medium": "l0"},
+    {"action": "disconnect", "node": "n99", "medium": "l98"},
+    {"action": "reconnect", "node": "n99", "medium": "l98"},
+    {"action": "shutdown", "node": "n98"},
+    {"action": "start", "node": "n98"},
+    {"action": "wait_ready", "timeout": 60},
+    {"action": "resource", "src": "n99", "dst": "n10", "size": 4096}
+  ]
+}

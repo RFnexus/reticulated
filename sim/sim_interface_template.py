@@ -1,4 +1,3 @@
-import RNS
 import socket
 import struct
 import threading

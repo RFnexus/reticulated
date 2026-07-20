@@ -17,7 +17,10 @@ dependencies = [
   "lxmf",
   "fastapi",
   "uvicorn[standard]",
-  "websockets"
+  "websockets",
+  "msgpack",
+  "psutil>=5.9.0",
+  "tomli>=2.0.0; python_version < '3.11'"
 ]
 
 [project.urls]
@@ -26,6 +29,9 @@ Repository = "https://github.com/RFnexus/reticulated"
 
 [project.scripts]
 reticulated = "run:main"
+reticulated-scenario = "sim.scenario:main"
+reticulated-dashboard = "sim.dashboard:main"
+reticulated-lab = "sim.lab:main"
 
 [tool.setuptools]
 include-package-data = true
@@ -33,3 +39,6 @@ py-modules = ["run"]
 
 [tool.setuptools.packages.find]
 include = ["sim*"]
+
+[tool.setuptools.package-data]
+"sim.dashboard_assets" = ["*.html", "*.css", "*.js"]

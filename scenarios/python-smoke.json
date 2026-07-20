@@ -1,0 +1,16 @@
+{
+  "name": "python-smoke",
+  "generate": {
+    "nodes": 2,
+    "rust_nodes": 0,
+    "transport_nodes": 1,
+    "bitrate": 10000000,
+    "mtu": 500,
+    "propagation": 0.0,
+    "loss": 0.0
+  },
+  "actions": [
+    {"action": "wait_ready", "timeout": 30},
+    {"action": "packet", "src": "n1", "dst": "n0", "size": 64, "timeout": 30}
+  ]
+}

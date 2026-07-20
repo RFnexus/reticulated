@@ -12,7 +12,11 @@ class Topology:
         self.link_seq = 0
         self.settings = {"announce_interval": 300.0, "announce_cap": 2.0, "loglevel": 4}
 
-    def add_node(self, label=None, x=0.0, y=0.0):
+    IMPLEMENTATIONS = ["python", "rust"]
+
+    def add_node(self, label=None, x=0.0, y=0.0, implementation="python"):
+        if implementation not in Topology.IMPLEMENTATIONS:
+            raise ValueError("implementation must be 'python' or 'rust'")
         node_id = "n" + str(self.node_seq)
         self.node_seq += 1
         self.nodes[node_id] = {
@@ -20,6 +24,7 @@ class Topology:
             "x": float(x),
             "y": float(y),
             "transport": False,
+            "implementation": implementation,
             "mode": "full",
             "link_modes": {},
         }
@@ -44,6 +49,13 @@ class Topology:
         if node is None:
             return False
         node["transport"] = bool(transport)
+        return True
+
+    def set_node_implementation(self, node_id, implementation):
+        node = self.nodes.get(node_id)
+        if node is None or implementation not in Topology.IMPLEMENTATIONS:
+            return False
+        node["implementation"] = implementation
         return True
 
     def set_node_mode(self, node_id, mode):
@@ -174,6 +186,8 @@ class Topology:
 
     def from_dict(self, data):
         self.nodes = data.get("nodes", {})
+        for node in self.nodes.values():
+            node.setdefault("implementation", "python")
         self.links = data.get("links", {})
         self.node_seq = data.get("node_seq", len(self.nodes))
         self.link_seq = data.get("link_seq", len(self.links))

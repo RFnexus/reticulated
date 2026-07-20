@@ -1,0 +1,23 @@
+{
+  "name": "mixed-smoke",
+  "generate": {
+    "nodes": 4,
+    "rust_nodes": 2,
+    "transport_nodes": 2,
+    "bitrate": 10000000,
+    "mtu": 500,
+    "propagation": 0.001,
+    "loss": 0.0
+  },
+  "transfer_timeout": 60,
+  "actions": [
+    {"action": "wait_ready", "timeout": 60},
+    {"action": "packet", "src": "n3", "dst": "n2", "size": 64},
+    {"action": "packet", "src": "n2", "dst": "n3", "size": 64},
+    {"action": "resource", "src": "n3", "dst": "n2", "size": 2048},
+    {"action": "resource", "src": "n2", "dst": "n3", "size": 2048},
+    {"action": "restart", "node": "n2"},
+    {"action": "wait_ready", "timeout": 30},
+    {"action": "packet", "src": "n3", "dst": "n2", "size": 64}
+  ]
+}

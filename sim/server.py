@@ -19,6 +19,7 @@ class NodeBody(BaseModel):
     label: str | None = None
     x: float = 0.0
     y: float = 0.0
+    implementation: str = "python"
 
 
 class NodeUpdate(BaseModel):
@@ -33,6 +34,7 @@ class NodeUpdate(BaseModel):
     announce_rate_penalty: int | None = None
     announce_cap: float | None = None
     color: str | None = None
+    implementation: str | None = None
 
 
 class LinkBody(BaseModel):
@@ -83,6 +85,8 @@ class GenerateBody(BaseModel):
     presets: list[str] = []
     max_loss: float = 0.0
     shape: str = "hub"
+    rust_nodes: int | None = None
+    rust_ratio: float | None = None
 
 
 class PositionsBody(BaseModel):
@@ -97,6 +101,15 @@ class DropBody(BaseModel):
 class LinkModeBody(BaseModel):
     link_id: str
     mode: str | None = None
+
+
+class MediumConnectionBody(BaseModel):
+    medium: str
+    connected: bool
+
+
+class PartitionBody(BaseModel):
+    groups: list[list[str]]
 
 
 async def broadcast(event):
@@ -170,7 +183,7 @@ async def post_drop_path(node_id: str, body: DropBody):
 
 @app.post("/api/nodes")
 def post_node(body: NodeBody):
-    node_id = sim.add_node(body.label, body.x, body.y)
+    node_id = sim.add_node(body.label, body.x, body.y, body.implementation)
     return {"id": node_id}
 
 
@@ -183,7 +196,7 @@ def patch_node(node_id: str, body: NodeUpdate):
         sim.set_node_announce_interval(node_id, fields["announce_interval"])
     if "color" in fields:
         sim.set_node_color(node_id, fields["color"])
-    config_fields = {k: fields[k] for k in ("transport", "mode", "announce_rate_target", "announce_rate_grace", "announce_rate_penalty", "announce_cap") if k in fields}
+    config_fields = {k: fields[k] for k in ("transport", "mode", "implementation", "announce_rate_target", "announce_rate_grace", "announce_rate_penalty", "announce_cap") if k in fields}
     if config_fields:
         sim.set_node_options(node_id, config_fields)
     return {"ok": True}
@@ -267,7 +280,8 @@ def post_reset():
 
 @app.post("/api/generate")
 def post_generate(body: GenerateBody):
-    result = sim.generate(body.nodes, body.max_hops, body.presets, body.max_loss, body.shape)
+    result = sim.generate(body.nodes, body.max_hops, body.presets, body.max_loss, body.shape,
+                          body.rust_nodes, body.rust_ratio)
     return {"ok": True, "result": result}
 
 
@@ -291,8 +305,32 @@ def post_stop():
 
 @app.post("/api/nodes/{node_id}/restart")
 def post_restart(node_id: str):
-    sim.restart_node(node_id)
-    return {"ok": True}
+    return {"ok": sim.restart_node(node_id)}
+
+
+@app.post("/api/nodes/{node_id}/shutdown")
+def post_shutdown_node(node_id: str):
+    return {"ok": sim.shutdown_node(node_id)}
+
+
+@app.post("/api/nodes/{node_id}/start")
+def post_start_node(node_id: str):
+    return {"ok": sim.start_node(node_id)}
+
+
+@app.post("/api/nodes/{node_id}/medium")
+def post_medium_connection(node_id: str, body: MediumConnectionBody):
+    return {"ok": sim.set_medium_connection(node_id, body.medium, body.connected)}
+
+
+@app.post("/api/media/{medium_id}/partition")
+def post_partition(medium_id: str, body: PartitionBody):
+    return {"ok": sim.partition_medium(medium_id, body.groups)}
+
+
+@app.post("/api/media/{medium_id}/recover")
+def post_partition_recover(medium_id: str):
+    return {"ok": sim.recover_partition(medium_id)}
 
 
 @app.post("/api/traffic")
